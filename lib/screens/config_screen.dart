@@ -21,10 +21,10 @@ class _ConfigScreenState extends ConsumerState<ConfigScreen> with SingleTickerPr
   
   // Fixed mode controllers
   final _setsController = TextEditingController(text: '3');
-  final _workMinController = TextEditingController(text: '0');
-  final _workSecController = TextEditingController(text: '30');
-  final _restMinController = TextEditingController(text: '0');
-  final _restSecController = TextEditingController(text: '15');
+  final _workMinController = TextEditingController(text: '1');
+  final _workSecController = TextEditingController(text: '00');
+  final _restMinController = TextEditingController(text: '1');
+  final _restSecController = TextEditingController(text: '00');
 
   // Variable mode
   final List<WorkoutSet> _customSets = [];
@@ -57,10 +57,10 @@ class _ConfigScreenState extends ConsumerState<ConfigScreen> with SingleTickerPr
     // Load fixed mode config
     setState(() {
       _setsController.text = prefs.getString('fixed_sets') ?? '3';
-      _workMinController.text = prefs.getString('fixed_work_min') ?? '0';
-      _workSecController.text = prefs.getString('fixed_work_sec') ?? '30';
-      _restMinController.text = prefs.getString('fixed_rest_min') ?? '0';
-      _restSecController.text = prefs.getString('fixed_rest_sec') ?? '15';
+      _workMinController.text = prefs.getString('fixed_work_min') ?? '1';
+      _workSecController.text = prefs.getString('fixed_work_sec') ?? '00';
+      _restMinController.text = prefs.getString('fixed_rest_min') ?? '1';
+      _restSecController.text = prefs.getString('fixed_rest_sec') ?? '00';
     });
 
     // Load saved custom sets
@@ -114,11 +114,11 @@ class _ConfigScreenState extends ConsumerState<ConfigScreen> with SingleTickerPr
       // Fixed mode
       _saveFixedConfig();
       final numSets = int.tryParse(_setsController.text) ?? 1;
-      final workMin = int.tryParse(_workMinController.text) ?? 0;
-      final workSec = int.tryParse(_workSecController.text) ?? 30;
-      final restMin = int.tryParse(_restMinController.text) ?? 0;
-      final restSec = int.tryParse(_restSecController.text) ?? 15;
-
+      final workMin = int.tryParse(_workMinController.text) ?? 1;
+      final workSec = int.tryParse(_workSecController.text) ?? 0;
+      final restMin = int.tryParse(_restMinController.text) ?? 1;
+      final restSec = int.tryParse(_restSecController.text) ?? 0;
+  
       for (int i = 0; i < numSets; i++) {
         sets.add(WorkoutSet(
           workMinutes: workMin,

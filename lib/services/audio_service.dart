@@ -4,40 +4,54 @@ import 'package:flutter/foundation.dart';
 class AudioService {
   static final AudioService _instance = AudioService._internal();
   factory AudioService() => _instance;
-  AudioService._internal();
 
   final AudioPlayer _player = AudioPlayer();
+  bool _isConfigured = false;
 
-  // Configurar el reproductor para no interrumpir otras apps
-  Future<void> _configurePlayer() async {
+  AudioService._internal() {
+    // Configurar el player al inicializar
+    _initPlayer();
+  }
+
+  // Inicializar y configurar el reproductor
+  Future<void> _initPlayer() async {
     try {
-      // Configurar el modo de audio para que no pause otras apps
-      await _player.setAudioContext(
-        AudioContext(
-          iOS: AudioContextIOS(
-            category: AVAudioSessionCategory.ambient,
-            options: {AVAudioSessionOptions.mixWithOthers},
-          ),
-          android: AudioContextAndroid(
-            isSpeakerphoneOn: false,
-            stayAwake: false,
-            contentType: AndroidContentType.sonification,
-            usageType: AndroidUsageType.notification,
-            audioFocus: AndroidAudioFocus.gainTransientMayDuck,
-          ),
-        ),
-      );
       await _player.setReleaseMode(ReleaseMode.stop);
+      await _player.setVolume(1.0);
+      _isConfigured = true;
+      debugPrint('Audio player configured successfully');
     } catch (e) {
-      debugPrint('Error configuring audio player: $e');
+      debugPrint('Error initializing audio player: $e');
     }
   }
 
   // Reproducir sonido cuando termina el tiempo de trabajo
   Future<void> playWorkEndSound() async {
     try {
-      await _configurePlayer();
+      if (!_isConfigured) await _initPlayer();
+      debugPrint('Playing work end sound...');
+      
+      // Configurar el audio justo antes de reproducir
+      await _player.setAudioContext(
+        AudioContext(
+          iOS: AudioContextIOS(
+            category: AVAudioSessionCategory.playback,
+            options: {
+              AVAudioSessionOptions.mixWithOthers,
+            },
+          ),
+          android: AudioContextAndroid(
+            isSpeakerphoneOn: false,
+            stayAwake: false,
+            contentType: AndroidContentType.music,
+            usageType: AndroidUsageType.media,
+            audioFocus: AndroidAudioFocus.gainTransientMayDuck,
+          ),
+        ),
+      );
+      
       await _player.play(AssetSource('sounds/end_bell.mp3'));
+      debugPrint('Work end sound played');
     } catch (e) {
       debugPrint('Error playing work end sound: $e');
     }
@@ -46,8 +60,30 @@ class AudioService {
   // Reproducir sonido cuando termina el tiempo de descanso
   Future<void> playRestEndSound() async {
     try {
-      await _configurePlayer();
+      if (!_isConfigured) await _initPlayer();
+      debugPrint('Playing rest end sound...');
+      
+      // Configurar el audio justo antes de reproducir
+      await _player.setAudioContext(
+        AudioContext(
+          iOS: AudioContextIOS(
+            category: AVAudioSessionCategory.playback,
+            options: {
+              AVAudioSessionOptions.mixWithOthers,
+            },
+          ),
+          android: AudioContextAndroid(
+            isSpeakerphoneOn: false,
+            stayAwake: false,
+            contentType: AndroidContentType.music,
+            usageType: AndroidUsageType.media,
+            audioFocus: AndroidAudioFocus.gainTransientMayDuck,
+          ),
+        ),
+      );
+      
       await _player.play(AssetSource('sounds/start_bell.mp3'));
+      debugPrint('Rest end sound played');
     } catch (e) {
       debugPrint('Error playing rest end sound: $e');
     }

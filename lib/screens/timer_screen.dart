@@ -529,7 +529,10 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                   icon: Icons.home,
                   label: 'Finalizar',
                   onPressed: () {
-                    ref.read(workoutProvider.notifier).reset();
+                    ref.read(workoutProvider.notifier).clearConfig();
+                    if (Navigator.of(context).canPop()) {
+                      Navigator.of(context).pop();
+                    }
                   },
                   color: textColor,
                   isPrimary: true,
