@@ -25,11 +25,14 @@ class AudioService {
     }
   }
 
-  // Reproducir sonido cuando termina el tiempo de trabajo
-  Future<void> playWorkEndSound() async {
+  // Configurar y reproducir un sonido
+  Future<void> _playSound(String soundPath, String soundName) async {
     try {
       if (!_isConfigured) await _initPlayer();
-      debugPrint('Playing work end sound...');
+      debugPrint('Playing $soundName...');
+      
+      // Detener cualquier reproducción anterior
+      await _player.stop();
       
       // Configurar el audio justo antes de reproducir
       await _player.setAudioContext(
@@ -50,43 +53,22 @@ class AudioService {
         ),
       );
       
-      await _player.play(AssetSource('sounds/end_bell.mp3'));
-      debugPrint('Work end sound played');
+      await _player.setVolume(1.0);
+      await _player.play(AssetSource(soundPath));
+      debugPrint('$soundName played');
     } catch (e) {
-      debugPrint('Error playing work end sound: $e');
+      debugPrint('Error playing $soundName: $e');
     }
+  }
+
+  // Reproducir sonido cuando termina el tiempo de trabajo
+  Future<void> playWorkEndSound() async {
+    await _playSound('sounds/end_bell.mp3', 'work end sound');
   }
 
   // Reproducir sonido cuando termina el tiempo de descanso
   Future<void> playRestEndSound() async {
-    try {
-      if (!_isConfigured) await _initPlayer();
-      debugPrint('Playing rest end sound...');
-      
-      // Configurar el audio justo antes de reproducir
-      await _player.setAudioContext(
-        AudioContext(
-          iOS: AudioContextIOS(
-            category: AVAudioSessionCategory.playback,
-            options: {
-              AVAudioSessionOptions.mixWithOthers,
-            },
-          ),
-          android: AudioContextAndroid(
-            isSpeakerphoneOn: false,
-            stayAwake: false,
-            contentType: AndroidContentType.music,
-            usageType: AndroidUsageType.media,
-            audioFocus: AndroidAudioFocus.gainTransientMayDuck,
-          ),
-        ),
-      );
-      
-      await _player.play(AssetSource('sounds/start_bell.mp3'));
-      debugPrint('Rest end sound played');
-    } catch (e) {
-      debugPrint('Error playing rest end sound: $e');
-    }
+    await _playSound('sounds/start_bell.mp3', 'rest end sound');
   }
 
   // Reproducir sonido cuando termina el entrenamiento
