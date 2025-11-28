@@ -18,6 +18,7 @@ class ConfigScreen extends ConsumerStatefulWidget {
 
 class _ConfigScreenState extends ConsumerState<ConfigScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _isLoading = true;
   
   // Fixed mode controllers
   final _setsController = TextEditingController(text: '3');
@@ -36,44 +37,76 @@ class _ConfigScreenState extends ConsumerState<ConfigScreen> with SingleTickerPr
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _loadConfig();
+  }
+  
+  void _initializeTabController(int initialIndex) {
+    _tabController = TabController(length: 2, vsync: this, initialIndex: initialIndex);
     _tabController.addListener(() {
-      if (_tabController.index == 1 && !_tabController.indexIsChanging) {
-        // When on Variables tab, ensure clean state
-        setState(() {
-          _customSets.clear();
-          _isEditingMode = false;
-          _editingSetName = null;
-          _selectedCustomSetName = null;
-        });
+      // Guardar el índice del tab activo y la configuración cuando cambie de tab
+      if (!_tabController.indexIsChanging) {
+        _saveActiveTab();
+        // Guardar configuración del tab que estamos dejando
+        if (_tabController.index == 0) {
+          // Acabamos de cambiar a Sets Fijos, guardar Sets Variables
+          _saveVariableConfig();
+        } else {
+          // Acabamos de cambiar a Sets Variables, guardar Sets Fijos
+          _saveFixedConfig();
+        }
       }
     });
-    _loadConfig();
+  }
+
+  Future<void> _saveActiveTab() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('active_tab_index', _tabController.index);
   }
 
   Future<void> _loadConfig() async {
     final prefs = await SharedPreferences.getInstance();
     
+    // Restaurar el tab activo
+    final activeTabIndex = prefs.getInt('active_tab_index') ?? 0;
+    
+    // Inicializar TabController con el índice correcto
+    _initializeTabController(activeTabIndex);
+    
     // Load fixed mode config
-    setState(() {
-      _setsController.text = prefs.getString('fixed_sets') ?? '3';
-      _workMinController.text = prefs.getString('fixed_work_min') ?? '1';
-      _workSecController.text = prefs.getString('fixed_work_sec') ?? '00';
-      _restMinController.text = prefs.getString('fixed_rest_min') ?? '1';
-      _restSecController.text = prefs.getString('fixed_rest_sec') ?? '00';
-    });
+    _setsController.text = prefs.getString('fixed_sets') ?? '3';
+    _workMinController.text = prefs.getString('fixed_work_min') ?? '1';
+    _workSecController.text = prefs.getString('fixed_work_sec') ?? '00';
+    _restMinController.text = prefs.getString('fixed_rest_min') ?? '1';
+    _restSecController.text = prefs.getString('fixed_rest_sec') ?? '00';
 
     // Load saved custom sets
     final savedSetsJson = prefs.getString('saved_custom_sets');
     if (savedSetsJson != null) {
       final Map<String, dynamic> decoded = jsonDecode(savedSetsJson);
+      _savedCustomSets.clear();
+      decoded.forEach((key, value) {
+        _savedCustomSets[key] = (value as List)
+            .map((s) => WorkoutSet.fromJson(s))
+            .toList();
+      });
+    }
+    
+    // Load variable mode temporary config
+    final variableSetsJson = prefs.getString('variable_temp_sets');
+    if (variableSetsJson != null) {
+      final List<dynamic> decoded = jsonDecode(variableSetsJson);
+      _customSets.clear();
+      _customSets.addAll(decoded.map((s) => WorkoutSet.fromJson(s)).toList());
+    }
+    
+    // Load variable mode dropdown state
+    _selectedCustomSetName = prefs.getString('variable_selected_set');
+    _isEditingMode = prefs.getBool('variable_is_editing') ?? false;
+    _editingSetName = prefs.getString('variable_editing_name');
+    
+    if (mounted) {
       setState(() {
-        _savedCustomSets.clear();
-        decoded.forEach((key, value) {
-          _savedCustomSets[key] = (value as List)
-              .map((s) => WorkoutSet.fromJson(s))
-              .toList();
-        });
+        _isLoading = false;
       });
     }
   }
@@ -94,6 +127,25 @@ class _ConfigScreenState extends ConsumerState<ConfigScreen> with SingleTickerPr
       toSave[key] = value.map((s) => s.toJson()).toList();
     });
     await prefs.setString('saved_custom_sets', jsonEncode(toSave));
+  }
+
+  Future<void> _saveVariableConfig() async {
+    final prefs = await SharedPreferences.getInstance();
+    final setsJson = jsonEncode(_customSets.map((s) => s.toJson()).toList());
+    await prefs.setString('variable_temp_sets', setsJson);
+    
+    // Save dropdown state
+    if (_selectedCustomSetName != null) {
+      await prefs.setString('variable_selected_set', _selectedCustomSetName!);
+    } else {
+      await prefs.remove('variable_selected_set');
+    }
+    await prefs.setBool('variable_is_editing', _isEditingMode);
+    if (_editingSetName != null) {
+      await prefs.setString('variable_editing_name', _editingSetName!);
+    } else {
+      await prefs.remove('variable_editing_name');
+    }
   }
 
   @override
@@ -162,7 +214,30 @@ class _ConfigScreenState extends ConsumerState<ConfigScreen> with SingleTickerPr
           ),
         ),
       ),
-      body: Container(
+      body: _isLoading
+          ? Container(
+              width: double.infinity,
+              height: double.infinity,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF4A90E2),
+                    Color(0xFF5B6FD8),
+                    Color(0xFF7B5FC6),
+                    Color(0xFF9D4EBF),
+                  ],
+                  stops: [0.0, 0.4, 0.7, 1.0],
+                ),
+              ),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+            )
+          : Container(
         width: double.infinity,
         height: double.infinity,
         decoration: const BoxDecoration(
@@ -216,18 +291,6 @@ class _ConfigScreenState extends ConsumerState<ConfigScreen> with SingleTickerPr
                     Tab(text: 'Sets Fijos'),
                     Tab(text: 'Sets Variables'),
                   ],
-                  onTap: (index) {
-                    if (index == 1) {
-                      // When switching to Variables tab, reset to new set creation mode
-                      setState(() {
-                        _customSets.clear();
-                        _isEditingMode = false;
-                        _editingSetName = null;
-                        _selectedCustomSetName = null;
-                      });
-                    }
-                    setState(() {});
-                  },
                 ),
               ),
             ),
@@ -257,6 +320,7 @@ class _ConfigScreenState extends ConsumerState<ConfigScreen> with SingleTickerPr
                             _isEditingMode = false;
                             _selectedCustomSetName = '__nuevo__';
                           });
+                          _saveVariableConfig();
                         } else if (value != null) {
                           setState(() {
                             _customSets.clear();
@@ -265,6 +329,7 @@ class _ConfigScreenState extends ConsumerState<ConfigScreen> with SingleTickerPr
                             _editingSetName = value;
                             _selectedCustomSetName = value;
                           });
+                          _saveVariableConfig();
                         }
                       },
                       onUpdateCustomSet: _updateCustomSet,
@@ -272,6 +337,7 @@ class _ConfigScreenState extends ConsumerState<ConfigScreen> with SingleTickerPr
                         setState(() {
                           _customSets.removeAt(index);
                         });
+                        _saveVariableConfig();
                       },
                       onAddCustomSet: _addCustomSet,
                       onUpdateExistingSet: _updateExistingSet,
@@ -325,12 +391,13 @@ class _ConfigScreenState extends ConsumerState<ConfigScreen> with SingleTickerPr
   void _addCustomSet() {
     setState(() {
       _customSets.add(WorkoutSet(
-        workMinutes: 0,
-        workSeconds: 30,
-        restMinutes: 0,
-        restSeconds: 15,
+        workMinutes: 1,
+        workSeconds: 0,
+        restMinutes: 1,
+        restSeconds: 0,
       ));
     });
+    _saveVariableConfig();
   }
 
   void _updateCustomSet(int index, {int? workMin, int? workSec, int? restMin, int? restSec}) {
@@ -342,6 +409,7 @@ class _ConfigScreenState extends ConsumerState<ConfigScreen> with SingleTickerPr
         restSeconds: restSec,
       );
     });
+    _saveVariableConfig();
   }
 
   Future<void> _updateExistingSet() async {

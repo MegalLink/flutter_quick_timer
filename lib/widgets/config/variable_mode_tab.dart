@@ -158,8 +158,8 @@ class VariableModeTab extends StatelessWidget {
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: onUpdateExistingSet,
-                icon: const Icon(Icons.save_outlined, size: 18),
-                label: const Text('Guardar'),
+                icon: const Icon(Icons.sync, size: 18),
+                label: const Text('Actualizar'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.white,
                   side: BorderSide(color: Colors.white.withValues(alpha: 0.3), width: 1),

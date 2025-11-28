@@ -119,9 +119,13 @@ class FixedModeTab extends StatelessWidget {
   Future<int?> _showNumberPickerDialog(BuildContext context, {required int initialValue}) async {
     int selectedValue = initialValue.clamp(1, 99);
     
-    return showDialog<int>(
+    return showGeneralDialog<int>(
       context: context,
-      builder: (BuildContext context) {
+      barrierDismissible: true,
+      barrierLabel: '',
+      barrierColor: Colors.black.withValues(alpha: 0.5),
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, animation, secondaryAnimation) {
         return StatefulBuilder(
           builder: (context, setState) {
             int tens = selectedValue ~/ 10;
@@ -270,6 +274,20 @@ class FixedModeTab extends StatelessWidget {
               ),
             );
           },
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curvedAnimation = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+        );
+        
+        return ScaleTransition(
+          scale: Tween<double>(begin: 0.7, end: 1.0).animate(curvedAnimation),
+          child: FadeTransition(
+            opacity: curvedAnimation,
+            child: child,
+          ),
         );
       },
     );
